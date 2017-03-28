@@ -12,6 +12,8 @@ public class DrawingView: UIView {
                 if controlPoints.count > 1{
                     self.bezierCurve()
                     self.convexHull(of: controlPoints)
+                } else {
+                    self.curvePoints = []
                 }
                 self.setNeedsDisplay(self.frame)
             }
@@ -40,6 +42,7 @@ public class DrawingView: UIView {
     public override func draw(_ rect: CGRect) {
         
         if self.layer.sublayers != nil {
+            print(self.layer.sublayers!.count)
             self.layer.sublayers?.removeAll()
         }
 
@@ -92,6 +95,7 @@ public class DrawingView: UIView {
     }
     
     func bezierCurve() {
+        print("rodou")
         self.curvePoints = []
         var factor = 0.0
         while factor < 1 {
@@ -161,12 +165,31 @@ public class DrawingView: UIView {
     public override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         if let touch = touches.first {
             let touchLocation = touch.location(in: superview)
-            print(String(describing: touchLocation.x) + ", " + String(describing: touchLocation.y))
             
-            self.controlPoints.append(CGPoint(x: touchLocation.x, y: touchLocation.y))
+            if let foundPointIndex = self.foundPoint(on: touchLocation) {
+                self.controlPoints.remove(at: foundPointIndex)
+           
+            } else {
+                self.controlPoints.append(CGPoint(x: touchLocation.x, y: touchLocation.y))
+            }
+            
+            //print(self.controlPoints.count)
             
         }
         
+    }
+    
+    func foundPoint(on touchLocation: CGPoint) -> Int? {
+        
+        //creating rect centered where user clicked
+        let touchRect : CGRect = CGRect(x: touchLocation.x-15, y: touchLocation.y-15, width: 30, height: 30)
+        
+        for index in (0..<self.controlPoints.count) {
+            if touchRect.contains(self.controlPoints[index]) {
+                return index
+            }
+        }
+        return nil
     }
 }
 
