@@ -3,7 +3,7 @@ import UIKit
 
 public class DrawingView: UIView {
     
-    
+    var pointLayers: [CALayer] = []
     //MARK: - Class properties
     var controlPoints: [CGPoint] = [] {
         //updates interface when new value is attributed
@@ -41,14 +41,47 @@ public class DrawingView: UIView {
     
     public override func draw(_ rect: CGRect) {
         
-        if self.layer.sublayers != nil {
-            print(self.layer.sublayers!.count)
-            self.layer.sublayers?.removeAll()
-        }
+        self.pointLayers.map({$0.removeFromSuperlayer()})
+        self.pointLayers = []
 
         self.draw(points: self.controlPoints)
         if curvePoints.count > 2 {
             self.draw(points: self.curvePoints)
+            
+            //bezier path
+            let path = UIBezierPath()
+            path.move(to: self.curvePoints[0])
+            for index in 1..<self.curvePoints.count {
+                path.addLine(to: self.curvePoints[index])
+            }
+            let shapeLayer = CAShapeLayer()
+            shapeLayer.path = path.cgPath
+            shapeLayer.strokeColor = UIColor.red.cgColor
+            shapeLayer.fillColor = UIColor.clear.cgColor
+            shapeLayer.lineWidth = 1.0
+            
+            self.layer.addSublayer(shapeLayer)
+            
+            //Square
+//            let square = UIView(frame: CGRect(x: 100, y: 100, width: 20, height: 20))
+//            square.backgroundColor = UIColor.gray
+//            self.addSubview(square)
+//            
+//            var animator: UIDynamicAnimator!
+//            var gravity: UIGravityBehavior!
+//            var collision: UICollisionBehavior!
+//            
+//            animator = UIDynamicAnimator(referenceView: self)
+//            gravity = UIGravityBehavior(items: [square])
+//            animator.addBehavior(gravity)
+//            
+//            collision = UICollisionBehavior(items: [square])
+//            collision.translatesReferenceBoundsIntoBoundary = true
+//            animator.addBehavior(collision)
+//            
+            
+//            // add a boundary that has the same frame as the barrier
+//            collision.addBoundary(withIdentifier: "barrier" as NSCopying, for: path)
         }
     }
     
@@ -62,6 +95,7 @@ public class DrawingView: UIView {
             layer.strokeColor = UIColor.blue.cgColor
             
             self.layer.addSublayer(layer)
+            self.pointLayers.append(layer)
         }
     }
     
@@ -95,7 +129,6 @@ public class DrawingView: UIView {
     }
     
     func bezierCurve() {
-        print("rodou")
         self.curvePoints = []
         var factor = 0.0
         while factor < 1 {
@@ -172,11 +205,7 @@ public class DrawingView: UIView {
             } else {
                 self.controlPoints.append(CGPoint(x: touchLocation.x, y: touchLocation.y))
             }
-            
-            //print(self.controlPoints.count)
-            
         }
-        
     }
     
     func foundPoint(on touchLocation: CGPoint) -> Int? {
