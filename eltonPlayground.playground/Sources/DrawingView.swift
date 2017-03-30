@@ -3,11 +3,20 @@ import UIKit
 
 public class DrawingView: UIView {
     
+    fileprivate var squares: [UIView] = []
+    
+    var animator: UIDynamicAnimator?
+    var gravity: UIGravityBehavior?
+    var collision: UICollisionBehavior?
+    
+    open let collisionBehavior: UICollisionBehavior
+    open let gravityBehavior: UIGravityBehavior
+    open let itemBehavior: UIDynamicItemBehavior
+
+    //MARK: - Class properties
     var path: UIBezierPath = UIBezierPath()
     var pathLayer: CAShapeLayer?
-    var newLayer: CAShapeLayer?
     var pointLayers: [CALayer] = []
-    //MARK: - Class properties
     var controlPoints: [CGPoint] = [] {
         //updates interface when new value is attributed
         didSet {
@@ -42,6 +51,48 @@ public class DrawingView: UIView {
     
     public override var isFirstResponder: Bool { return true }
     
+    //MARK: - inits
+    public init() {
+        self.collisionBehavior = UICollisionBehavior(items: [])
+        self.gravityBehavior = UIGravityBehavior(items: [])
+        self.itemBehavior = UIDynamicItemBehavior(items: [])
+        
+        super.init(frame: CGRect(x: 0, y: 0, width: 480, height: 320))
+        backgroundColor = UIColor.white
+        
+        animator = UIDynamicAnimator(referenceView: self)
+        animator?.addBehavior(collisionBehavior)
+        animator?.addBehavior(gravityBehavior)
+        animator?.addBehavior(itemBehavior)
+        
+        createSquareView()
+    }
+    
+    public required init?(coder aDecoder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
+    
+    //MARK: - Square View
+    func createSquareView() {
+        let square = UIView(frame: CGRect(x: 150, y: 0, width: 20, height: 20))
+        
+        square.backgroundColor = UIColor.black
+        self.addSubview(square)
+        self.squares.append(square)
+        
+        layoutSquares()
+    }
+    
+    fileprivate func layoutSquares() {
+        for square in self.squares {
+            self.collisionBehavior.addItem(square)
+            self.gravityBehavior.addItem(square)
+            itemBehavior.addItem(square)
+        }
+
+    }
+    
     public override func draw(_ rect: CGRect) {
         
         self.pointLayers.map({$0.removeFromSuperlayer()})
@@ -62,34 +113,16 @@ public class DrawingView: UIView {
             for index in 1..<self.curvePoints.count {
                 self.path.addLine(to: self.curvePoints[index])
             }
+            
             self.pathLayer = CAShapeLayer()
             self.pathLayer?.path = self.path.cgPath
             self.pathLayer?.strokeColor = UIColor.red.cgColor
             self.pathLayer?.fillColor = UIColor.clear.cgColor
-            self.pathLayer?.lineWidth = 1.0
+            self.pathLayer?.lineWidth = 2.0
 
             self.layer.addSublayer(self.pathLayer!)
             
-            //Square
-//            let square = UIView(frame: CGRect(x: 100, y: 100, width: 20, height: 20))
-//            square.backgroundColor = UIColor.gray
-//            self.addSubview(square)
-//            
-//            var animator: UIDynamicAnimator!
-//            var gravity: UIGravityBehavior!
-//            var collision: UICollisionBehavior!
-//            
-//            animator = UIDynamicAnimator(referenceView: self)
-//            gravity = UIGravityBehavior(items: [square])
-//            animator.addBehavior(gravity)
-//            
-//            collision = UICollisionBehavior(items: [square])
-//            collision.translatesReferenceBoundsIntoBoundary = true
-//            animator.addBehavior(collision)
-//            
-            
-//            // add a boundary that has the same frame as the barrier
-//            collision.addBoundary(withIdentifier: "barrier" as NSCopying, for: path)
+            self.collisionBehavior.addBoundary(withIdentifier: "barrier" as NSCopying, for: self.path)
         }
     }
     
