@@ -3,6 +3,9 @@ import UIKit
 
 public class DrawingView: UIView {
     
+    var path: UIBezierPath = UIBezierPath()
+    var pathLayer: CAShapeLayer?
+    var newLayer: CAShapeLayer?
     var pointLayers: [CALayer] = []
     //MARK: - Class properties
     var controlPoints: [CGPoint] = [] {
@@ -43,24 +46,29 @@ public class DrawingView: UIView {
         
         self.pointLayers.map({$0.removeFromSuperlayer()})
         self.pointLayers = []
+        if self.pathLayer != nil {
+            self.path = UIBezierPath()
+            self.pathLayer!.removeFromSuperlayer()
+            
+            print("entrou")
+        }
 
         self.draw(points: self.controlPoints)
         if curvePoints.count > 2 {
             self.draw(points: self.curvePoints)
             
             //bezier path
-            let path = UIBezierPath()
-            path.move(to: self.curvePoints[0])
+            self.path.move(to: self.curvePoints[0])
             for index in 1..<self.curvePoints.count {
-                path.addLine(to: self.curvePoints[index])
+                self.path.addLine(to: self.curvePoints[index])
             }
-            let shapeLayer = CAShapeLayer()
-            shapeLayer.path = path.cgPath
-            shapeLayer.strokeColor = UIColor.red.cgColor
-            shapeLayer.fillColor = UIColor.clear.cgColor
-            shapeLayer.lineWidth = 1.0
-            
-            self.layer.addSublayer(shapeLayer)
+            self.pathLayer = CAShapeLayer()
+            self.pathLayer?.path = self.path.cgPath
+            self.pathLayer?.strokeColor = UIColor.red.cgColor
+            self.pathLayer?.fillColor = UIColor.clear.cgColor
+            self.pathLayer?.lineWidth = 1.0
+
+            self.layer.addSublayer(self.pathLayer!)
             
             //Square
 //            let square = UIView(frame: CGRect(x: 100, y: 100, width: 20, height: 20))
