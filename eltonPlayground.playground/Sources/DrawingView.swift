@@ -3,19 +3,8 @@ import UIKit
 
 public class DrawingView: UIView {
     
-    fileprivate var squares: [UIView] = []
-    
-    var animator: UIDynamicAnimator?
-    var gravity: UIGravityBehavior?
-    var collision: UICollisionBehavior?
-    
-    open let collisionBehavior: UICollisionBehavior
-    open let gravityBehavior: UIGravityBehavior
-    open let itemBehavior: UIDynamicItemBehavior
 
     //MARK: - Class properties
-    var path: UIBezierPath = UIBezierPath()
-    var pathLayer: CAShapeLayer?
     var pointLayers: [CALayer] = []
     var controlPoints: [CGPoint] = [] {
         //updates interface when new value is attributed
@@ -23,10 +12,11 @@ public class DrawingView: UIView {
             if controlPoints != oldValue {
                 if controlPoints.count > 1{
                     self.bezierCurve()
-                    self.convexHull(of: controlPoints)
+                    
                 } else {
                     self.curvePoints = []
                 }
+                
                 self.setNeedsDisplay(self.frame)
             }
         }
@@ -53,19 +43,9 @@ public class DrawingView: UIView {
     
     //MARK: - inits
     public init() {
-        self.collisionBehavior = UICollisionBehavior(items: [])
-        self.gravityBehavior = UIGravityBehavior(items: [])
-        self.itemBehavior = UIDynamicItemBehavior(items: [])
         
-        super.init(frame: CGRect(x: 0, y: 0, width: 480, height: 320))
+        super.init(frame: CGRect(x: 0, y: 0, width: 480, height: 600))
         backgroundColor = UIColor.white
-        
-        animator = UIDynamicAnimator(referenceView: self)
-        animator?.addBehavior(collisionBehavior)
-        animator?.addBehavior(gravityBehavior)
-        animator?.addBehavior(itemBehavior)
-        
-        createSquareView()
     }
     
     public required init?(coder aDecoder: NSCoder) {
@@ -73,56 +53,14 @@ public class DrawingView: UIView {
     }
     
     
-    //MARK: - Square View
-    func createSquareView() {
-        let square = UIView(frame: CGRect(x: 150, y: 0, width: 20, height: 20))
-        
-        square.backgroundColor = UIColor.black
-        self.addSubview(square)
-        self.squares.append(square)
-        
-        layoutSquares()
-    }
-    
-    fileprivate func layoutSquares() {
-        for square in self.squares {
-            self.collisionBehavior.addItem(square)
-            self.gravityBehavior.addItem(square)
-            itemBehavior.addItem(square)
-        }
-
-    }
-    
     public override func draw(_ rect: CGRect) {
         
         self.pointLayers.map({$0.removeFromSuperlayer()})
         self.pointLayers = []
-        if self.pathLayer != nil {
-            self.path = UIBezierPath()
-            self.pathLayer!.removeFromSuperlayer()
-            
-            print("entrou")
-        }
 
         self.draw(points: self.controlPoints)
         if curvePoints.count > 2 {
             self.draw(points: self.curvePoints)
-            
-            //bezier path
-            self.path.move(to: self.curvePoints[0])
-            for index in 1..<self.curvePoints.count {
-                self.path.addLine(to: self.curvePoints[index])
-            }
-            
-            self.pathLayer = CAShapeLayer()
-            self.pathLayer?.path = self.path.cgPath
-            self.pathLayer?.strokeColor = UIColor.red.cgColor
-            self.pathLayer?.fillColor = UIColor.clear.cgColor
-            self.pathLayer?.lineWidth = 2.0
-
-            self.layer.addSublayer(self.pathLayer!)
-            
-            self.collisionBehavior.addBoundary(withIdentifier: "barrier" as NSCopying, for: self.path)
         }
     }
     
@@ -180,71 +118,26 @@ public class DrawingView: UIView {
     }
     
     
-    // MARK: - Convex Hull
-    func convexHull(of controlPoints: [CGPoint]) {
-        //Sorting the points by x-coordinate (in case of a tie, sorting by y-coordinate)
-        let sortedPoints = controlPoints.sorted { (pointA, pointB) -> Bool in
-            return (pointA.x == pointB.x) ? (pointA.y > pointB.y) : (pointA.x > pointB.x)
-        }
-        
-        var upperHull : [CGPoint] = []
-        var lowerHull : [CGPoint] = []
-        
-        /*while L contains at least two points and the sequence of last two points
-         of L and the point P[i] does not make a counter-clockwise turn:
-         remove the last point from L*/
-        for point in sortedPoints {
-            while (lowerHull.count >= 2) &&
-                (self.crossProduct(pointO: lowerHull[lowerHull.count-2],
-                                   pointA: lowerHull[lowerHull.count-1],
-                                   pointB: point) <= 0) {
-                                    lowerHull.removeLast()
-            }
-            lowerHull.append(point)
-        }
-        
-        /*for i = n, n-1, ..., 1:
-         while U contains at least two points and the sequence of last two points
-         of U and the point P[i] does not make a counter-clockwise turn:
-         remove the last point from U
-         append P[i] to U*/
-        for point in sortedPoints.reversed() {
-            while (upperHull.count >= 2) &&
-                (self.crossProduct(pointO: upperHull[upperHull.count-2],
-                                   pointA: upperHull[upperHull.count-1],
-                                   pointB: point) <= 0) {
-                                    upperHull.removeLast()
-            }
-            upperHull.append(point)
-        }
-        
-        //removing duplicates
-        //lowerHull.removeLast()
-        upperHull.removeLast()
-        
-        self.convexHull = lowerHull + upperHull
-    }
-    
-    func crossProduct(pointO: CGPoint, pointA: CGPoint, pointB: CGPoint) -> Double {
-        /*  2D cross product of OA and OB vectors, i.e. z-component of their 3D cross product.
-         Returns a positive value, if OAB makes a counter-clockwise turn,
-         negative for clockwise turn, and zero if the points are collinear.*/
-        let part1 = (pointA.x - pointO.x) * (pointB.y - pointO.y)
-        let part2 = (pointA.y - pointO.y) * (pointB.x - pointO.x)
-        return  Double(part1 - part2)
-    }
-    
-    
     // MARK: - Handling Touch
     public override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         if let touch = touches.first {
             let touchLocation = touch.location(in: superview)
             
             if let foundPointIndex = self.foundPoint(on: touchLocation) {
-                self.controlPoints.remove(at: foundPointIndex)
+                //self.controlPoints.remove(at: foundPointIndex)
            
             } else {
-                self.controlPoints.append(CGPoint(x: touchLocation.x, y: touchLocation.y))
+                self.controlPoints.append(CGPoint(x: touchLocation.x-15, y: touchLocation.y-15))
+            }
+        }
+    }
+    
+    public override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
+        if let touch = touches.first {
+            let touchLocation = touch.location(in: superview)
+            
+            if let foundPointIndex = self.foundPoint(on: touchLocation) {
+                self.controlPoints[foundPointIndex] = touchLocation
             }
         }
     }
@@ -252,7 +145,7 @@ public class DrawingView: UIView {
     func foundPoint(on touchLocation: CGPoint) -> Int? {
         
         //creating rect centered where user clicked
-        let touchRect : CGRect = CGRect(x: touchLocation.x-15, y: touchLocation.y-15, width: 30, height: 30)
+        let touchRect : CGRect = CGRect(x: touchLocation.x-15, y: touchLocation.y-15, width: 20, height: 20)
         
         for index in (0..<self.controlPoints.count) {
             if touchRect.contains(self.controlPoints[index]) {
