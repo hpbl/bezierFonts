@@ -3,7 +3,17 @@ import UIKit
 
 public class DrawingView: UIView {
     
-
+    //MARK: Interface
+    let words = [("hello", "e"), ("WWDC", "C"), ("bézier", "z"), ("fonts", "o")]
+    let fonts = [("MAXWELL BOLD", "ttf"), ("Oduda", "otf"), ("Reef", "otf")]
+    
+    var wordLabel: UILabel?
+    var hintButton: UIButton?
+    var nextButton: UIButton?
+    var currentWordIndex: Int?
+    var currentFontIndex: Int?
+    
+    
     //MARK: - Class properties
     var pointviews: [UIView] = []
     var controlPoints: [CGPoint] = [] {
@@ -41,11 +51,63 @@ public class DrawingView: UIView {
     
     public override var isFirstResponder: Bool { return true }
     
+    
     //MARK: - inits
     public init() {
         
-        super.init(frame: CGRect(x: 0, y: 0, width: 480, height: 600))
+        super.init(frame: CGRect(x: 0, y: 0, width: 480, height: 400))
         backgroundColor = UIColor.white
+        
+        
+        //Label
+        self.currentWordIndex = 0
+        self.currentFontIndex = 0
+        
+        for font in fonts {
+            let fontURL = Bundle.main.url(forResource: font.0, withExtension: font.1)
+            CTFontManagerRegisterFontsForURL(fontURL! as CFURL, CTFontManagerScope.process, nil)
+        }
+        
+        self.wordLabel = UILabel(frame: CGRect(x: 10, y: 100, width: 600, height: 150))
+        self.wordLabel?.textColor = UIColor.black
+        
+        let attributedText = NSMutableAttributedString(string: words[self.currentWordIndex!].0)
+        attributedText.addAttribute(NSForegroundColorAttributeName,
+                                    value: self.backgroundColor!,
+                                    range: (words[self.currentWordIndex!].0 as NSString).range(of: words[self.currentWordIndex!].1))
+        self.wordLabel?.attributedText = attributedText
+        
+        self.wordLabel?.font = UIFont(name: fonts[self.currentFontIndex!].0, size: 150)
+        
+        self.addSubview(wordLabel!)
+        
+        
+        //Hint Buttons
+        self.hintButton = UIButton(frame: CGRect(x: self.frame.width/8 * 2, y: self.frame.height - self.frame.height/4, width: 70, height: 40))
+        
+        self.hintButton?.backgroundColor = UIColor.clear
+        self.hintButton?.setTitle("show", for: .normal)
+        self.hintButton?.setTitleColor(UIColor.gray, for: .normal)
+        
+        self.hintButton?.setTitle("hide", for: .selected)
+        self.hintButton?.setTitleColor(UIColor.darkGray, for: .selected)
+        
+        self.hintButton?.addTarget(self, action: #selector(self.hintAction), for: .touchUpInside)
+        
+        
+        self.addSubview(self.hintButton!)
+        
+        //Next Buttons
+        self.nextButton = UIButton(frame: CGRect(x: self.frame.width/8 * 5, y: self.frame.height - self.frame.height/4, width: 70, height: 40))
+        
+        self.nextButton?.backgroundColor = UIColor.clear
+        self.nextButton?.setTitle("next", for: .normal)
+        self.nextButton?.setTitleColor(UIColor.gray, for: .normal)
+        
+        self.nextButton?.addTarget(self, action: #selector(self.nextAction), for: .touchUpInside)
+        
+        
+        self.addSubview(self.nextButton!)
     }
     
     public required init?(coder aDecoder: NSCoder) {
@@ -70,9 +132,9 @@ public class DrawingView: UIView {
     }
     
     func drawCurveCircle(on point: CGPoint) {
-        let circle = UIView(frame: CGRect(x: point.x, y: point.y, width: 4, height: 4))
+        let circle = UIView(frame: CGRect(x: point.x, y: point.y, width: 12, height: 12))
 
-        circle.backgroundColor = UIColor.red
+        circle.backgroundColor = UIColor(red: 251/255, green: 109/255, blue: 37/255, alpha: 1)
         circle.layer.cornerRadius = circle.frame.width/2
         circle.clipsToBounds = true
         circle.tag = 1337
@@ -132,7 +194,7 @@ public class DrawingView: UIView {
                 self.controlPoints.append(touchLocation)
                 
                 let circle = UIView(frame: CGRect(x: touchLocation.x-4, y: touchLocation.y-4, width: 8, height: 8))
-                circle.backgroundColor = UIColor.black
+                circle.backgroundColor = UIColor.darkGray
                 circle.layer.cornerRadius = circle.frame.width/2
                 circle.clipsToBounds = true
                 
@@ -171,6 +233,50 @@ public class DrawingView: UIView {
             self.controlPoints[index!] = self.pointviews[index!].frame.origin
         }
 
+    }
+    
+    
+    //MARK: - Interface methods
+    func hintAction() {
+        self.hintButton?.isSelected = !(self.hintButton?.isSelected)!
+        
+        if (self.hintButton?.isSelected)! {
+            let attributedText = NSMutableAttributedString(string: words[self.currentWordIndex!].0)
+            attributedText.addAttribute(NSForegroundColorAttributeName,
+                                        value: UIColor(red: 204/255, green: 204/255, blue: 204/255, alpha: 1),
+                                        range: (words[self.currentWordIndex!].0 as NSString).range(of: words[self.currentWordIndex!].1))
+            self.wordLabel?.attributedText = attributedText
+        
+        } else {
+            let attributedText = NSMutableAttributedString(string: words[self.currentWordIndex!].0)
+            attributedText.addAttribute(NSForegroundColorAttributeName,
+                                        value: self.backgroundColor!,
+                                        range: (words[self.currentWordIndex!].0 as NSString).range(of: words[self.currentWordIndex!].1))
+            self.wordLabel?.attributedText = attributedText
+        }
+    }
+    
+    func nextAction() {
+        // Clean screen
+        self.pointviews.forEach({$0.removeFromSuperview()})
+        self.pointviews.removeAll()
+        self.controlPoints.removeAll()
+        self.curvePoints.removeAll()
+        
+        //TODO: Update word
+        self.currentWordIndex = (self.currentWordIndex! + 1) % self.words.count
+        self.currentFontIndex = (self.currentFontIndex! + 1) % self.fonts.count
+        
+        let attributedText = NSMutableAttributedString(string: words[self.currentWordIndex!].0)
+        attributedText.addAttribute(NSForegroundColorAttributeName,
+                                    value: self.backgroundColor!,
+                                    range: (words[self.currentWordIndex!].0 as NSString).range(of: words[self.currentWordIndex!].1))
+        self.wordLabel?.attributedText = attributedText
+        
+        self.wordLabel?.font = UIFont(name: fonts[self.currentFontIndex!].0, size: 150)
+        
+        self.hintButton?.isSelected = false
+        
     }
 }
 
