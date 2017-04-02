@@ -5,14 +5,14 @@ public class DrawingView: UIView {
     
 
     //MARK: - Class properties
-    var pointLayers: [CALayer] = []
+    var pointviews: [UIView] = []
     var controlPoints: [CGPoint] = [] {
         //updates interface when new value is attributed
         didSet {
             if controlPoints != oldValue {
                 if controlPoints.count > 1{
                     self.bezierCurve()
-                    
+
                 } else {
                     self.curvePoints = []
                 }
@@ -55,27 +55,32 @@ public class DrawingView: UIView {
     
     public override func draw(_ rect: CGRect) {
         
-        self.pointLayers.map({$0.removeFromSuperlayer()})
-        self.pointLayers = []
-
-        self.draw(points: self.controlPoints)
+        for view in self.subviews {
+            if view.tag == 1337 {
+                view.removeFromSuperview()
+            }
+        }
+        
+        //self.draw(points: self.controlPoints)
         if curvePoints.count > 2 {
-            self.draw(points: self.curvePoints)
+            for point in self.curvePoints {
+                self.drawCurveCircle(on: point)
+            }
         }
     }
     
-    
-    func draw(points: [CGPoint]) {
-        for point in points {
-            let dotPath = UIBezierPath(ovalIn: CGRect(x: point.x, y: point.y, width: 8, height: 8))
-            
-            let layer = CAShapeLayer()
-            layer.path = dotPath.cgPath
-            layer.strokeColor = UIColor.blue.cgColor
-            
-            self.layer.addSublayer(layer)
-            self.pointLayers.append(layer)
-        }
+    func drawCurveCircle(on point: CGPoint) {
+        let circle = UIView(frame: CGRect(x: point.x, y: point.y, width: 4, height: 4))
+
+        circle.backgroundColor = UIColor.red
+        circle.layer.cornerRadius = circle.frame.width/2
+        circle.clipsToBounds = true
+        circle.tag = 1337
+
+        
+        self.addSubview(circle)
+        //self.pointviews.append(circle)
+
     }
     
     
@@ -123,36 +128,49 @@ public class DrawingView: UIView {
         if let touch = touches.first {
             let touchLocation = touch.location(in: superview)
             
-            if let foundPointIndex = self.foundPoint(on: touchLocation) {
-                //self.controlPoints.remove(at: foundPointIndex)
-           
-            } else {
-                self.controlPoints.append(CGPoint(x: touchLocation.x-15, y: touchLocation.y-15))
+            if self.foundPoint(on: touchLocation) == nil {
+                self.controlPoints.append(touchLocation)
+                
+                let circle = UIView(frame: CGRect(x: touchLocation.x-4, y: touchLocation.y-4, width: 8, height: 8))
+                circle.backgroundColor = UIColor.black
+                circle.layer.cornerRadius = circle.frame.width/2
+                circle.clipsToBounds = true
+                
+                let gestureRecognizer = UIPanGestureRecognizer(target: self, action: #selector(handlePan))
+                circle.addGestureRecognizer(gestureRecognizer)
+                
+                self.pointviews.append(circle)
+                self.addSubview(circle)
             }
         }
     }
     
-    public override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
-        if let touch = touches.first {
-            let touchLocation = touch.location(in: superview)
-            
-            if let foundPointIndex = self.foundPoint(on: touchLocation) {
-                self.controlPoints[foundPointIndex] = touchLocation
-            }
-        }
-    }
     
     func foundPoint(on touchLocation: CGPoint) -> Int? {
+        let touchRect = CGRect(x: touchLocation.x-10, y: touchLocation.y-10, width: 20, height: 20)
         
-        //creating rect centered where user clicked
-        let touchRect : CGRect = CGRect(x: touchLocation.x-15, y: touchLocation.y-15, width: 20, height: 20)
-        
-        for index in (0..<self.controlPoints.count) {
-            if touchRect.contains(self.controlPoints[index]) {
-                return index
+        for point in self.controlPoints {
+            if touchRect.contains(point) {
+
+                self.bringSubview(toFront:               self.pointviews[self.controlPoints.index(of: point)!])
+                //print("achei ponto")
+                return self.controlPoints.index(of: point)
             }
         }
+        //print("não achei ponto")
         return nil
+    }
+    
+    func handlePan(_ gestureRecognizer: UIPanGestureRecognizer) {
+        let index = self.pointviews.index(of: gestureRecognizer.view!)
+        
+        if gestureRecognizer.state == .began || gestureRecognizer.state == .changed {
+            
+            gestureRecognizer.view?.center = gestureRecognizer.location(in: self)
+            
+            self.controlPoints[index!] = self.pointviews[index!].frame.origin
+        }
+
     }
 }
 
